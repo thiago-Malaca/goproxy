@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,6 +36,7 @@ func (fs *FileStream) Write(b []byte) (nr int, err error) {
 			return 0, err
 		}
 	}
+	log.Println(b)
 	return fs.f.Write(b)
 }
 
@@ -177,32 +179,32 @@ func (logger *HttpLogger) Close() error {
 	return <-logger.errch
 }
 
-// TeeReadCloser extends io.TeeReader by allowing reader and writer to be
-// closed.
-type TeeReadCloser struct {
-	r io.Reader
-	w io.WriteCloser
-	c io.Closer
-}
+// // TeeReadCloser extends io.TeeReader by allowing reader and writer to be
+// // closed.
+// type TeeReadCloser struct {
+// 	r io.Reader
+// 	w io.WriteCloser
+// 	c io.Closer
+// }
 
-func NewTeeReadCloser(r io.ReadCloser, w io.WriteCloser) io.ReadCloser {
-	return &TeeReadCloser{io.TeeReader(r, w), w, r}
-}
+// func NewTeeReadCloser(r io.ReadCloser, w io.WriteCloser) io.ReadCloser {
+// 	return &TeeReadCloser{io.TeeReader(r, w), w, r}
+// }
 
-func (t *TeeReadCloser) Read(b []byte) (int, error) {
-	return t.r.Read(b)
-}
+// func (t *TeeReadCloser) Read(b []byte) (int, error) {
+// 	return t.r.Read(b)
+// }
 
-// Close attempts to close the reader and write. It returns an error if both
-// failed to Close.
-func (t *TeeReadCloser) Close() error {
-	err1 := t.c.Close()
-	err2 := t.w.Close()
-	if err1 != nil {
-		return err1
-	}
-	return err2
-}
+// // Close attempts to close the reader and write. It returns an error if both
+// // failed to Close.
+// func (t *TeeReadCloser) Close() error {
+// 	err1 := t.c.Close()
+// 	err2 := t.w.Close()
+// 	if err1 != nil {
+// 		return err1
+// 	}
+// 	return err2
+// }
 
 // stoppableListener serves stoppableConn and tracks their lifetime to notify
 // when it is safe to terminate the application.
@@ -234,12 +236,69 @@ func (sc *stoppableConn) Close() error {
 	return sc.Conn.Close()
 }
 
+type CertStorage struct {
+	certs sync.Map
+}
+
+func (tcs *CertStorage) Fetch(hostname string, gen func() (*tls.Certificate, error)) (*tls.Certificate, error) {
+	var cert tls.Certificate
+	icert, ok := tcs.certs.Load(hostname)
+	if ok {
+		cert = icert.(tls.Certificate)
+	} else {
+		certp, err := gen()
+		if err != nil {
+			return nil, err
+		}
+		// store as concrete implementation
+		cert = *certp
+		tcs.certs.Store(hostname, cert)
+	}
+	return &cert, nil
+}
+
+func NewCertStorage() *CertStorage {
+	tcs := &CertStorage{}
+	tcs.certs = sync.Map{}
+
+	return tcs
+}
+
+// TeeReadCloser extends io.TeeReader by allowing reader and writer to be
+// closed.
+type TeeReadCloser struct {
+	r io.Reader
+	w io.WriteCloser
+	c io.Closer
+}
+
+func NewTeeReadCloser(r io.ReadCloser, w io.WriteCloser) io.ReadCloser {
+	return &TeeReadCloser{io.TeeReader(r, w), w, r}
+}
+
+func (t *TeeReadCloser) Read(b []byte) (int, error) {
+	return t.r.Read(b)
+}
+
+// Close attempts to close the reader and write. It returns an error if both
+// failed to Close.
+func (t *TeeReadCloser) Close() error {
+	err1 := t.c.Close()
+	err2 := t.w.Close()
+	if err1 != nil {
+		return err1
+	}
+	return err2
+}
+
 func main() {
-	verbose := flag.Bool("v", false, "should every proxy request be logged to stdout")
+	// verbose := flag.Bool("v", false, "should every proxy request be logged to stdout")
 	addr := flag.String("l", ":8080", "on which address should the proxy listen")
 	flag.Parse()
 	proxy := goproxy.NewProxyHttpServer()
-	proxy.Verbose = *verbose
+	proxy.CertStore = NewCertStorage()
+	proxy.Verbose = true
+
 	if err := os.MkdirAll("db", 0755); err != nil {
 		log.Fatal("Can't create dir", err)
 	}
@@ -251,7 +310,11 @@ func main() {
 	// For every incoming request, override the RoundTripper to extract
 	// connection information. Store it is session context log it after
 	// handling the response.
+	fmt.Println("Main")
+
+	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	proxy.OnRequest().DoFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+		fmt.Println("LogRequest")
 		ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
 			ctx.UserData, resp, err = tr.DetailedRoundTrip(req)
 			return
@@ -260,6 +323,7 @@ func main() {
 		return req, nil
 	})
 	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+		fmt.Println("LogResponse")
 		logger.LogResp(resp, ctx)
 		return resp
 	})
