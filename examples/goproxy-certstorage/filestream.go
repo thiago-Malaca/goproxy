@@ -23,7 +23,7 @@ func (fs *FileStream) Write(b []byte) (nr int, err error) {
 			return 0, err
 		}
 	}
-	log.Println(b)
+	log.Println("Write:", b)
 	return fs.f.Write(b)
 }
 

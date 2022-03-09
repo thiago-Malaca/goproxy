@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"os"
+	"time"
 
 	"github.com/elazarl/goproxy"
 	"github.com/elazarl/goproxy/transport"
@@ -24,16 +24,18 @@ func main() {
 		log.Printf("Servidor no ar! - Configurado para escutar o endereço: %s", *addr)
 	}
 
-	if err := os.MkdirAll("db", 0755); err != nil {
-		log.Fatal("Can't create dir", err)
-	}
-	logger, err := NewLogger("db")
+	now := time.Now()
+	sNow := now.Format("2006-01-02")
+
+	// if err := os.MkdirAll(path, 0755); err != nil {
+	// 	log.Fatal("Can't create dir", err)
+	// }
+	logger, err := NewLogger("db/" + sNow)
 	if err != nil {
 		log.Fatal("can't open log file", err)
 	}
 
 	// tr := &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	tr := &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{ServerName: "jsonplaceholder.typicode.com"}}
 	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	// transport := &http.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{InsecureSkipVerify: true},}
 
@@ -42,11 +44,24 @@ func main() {
 		// fmt.Println("teste: ", ctx.Req.PostForm)
 		// fmt.Println("LogRequest")
 		// log.Println("LogRequest-req.Body: ", req.Body)
+
+		tr := &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{ServerName: req.Host}}
+
 		ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
 			ctx.UserData, resp, err = tr.DetailedRoundTrip(req)
 			return
 		})
+		// id := uuid.New()
+		// ctx.UserData.id = id.String()()
+
+		// spew.Dump()
+
+		// fmt.Println("req.ContentLength: ", req.ContentLength)
+
+		// if req.ContentLength != 0 {
 		logger.LogReq(req, ctx)
+		// }
+
 		return req, nil
 	})
 

@@ -13,6 +13,7 @@ type Meta struct {
 	resp     *http.Response
 	err      error
 	t        time.Time
+	id       string
 	sess     int64
 	bodyPath string
 	from     string
@@ -38,11 +39,12 @@ func write(nr *int64, err *error, w io.Writer, b []byte) {
 
 func (m *Meta) WriteTo(w io.Writer) (nr int64, err error) {
 	if m.req != nil {
-		fprintf(&nr, &err, w, "Type: request\r\n")
+		fprintf(&nr, &err, w, "==========================\r\nType: request\r\n")
 	} else if m.resp != nil {
-		fprintf(&nr, &err, w, "Type: response\r\n")
+		fprintf(&nr, &err, w, "--------------------------\r\nType: response\r\n")
 	}
 	fprintf(&nr, &err, w, "ReceivedAt: %v\r\n", m.t)
+	fprintf(&nr, &err, w, "Id: %s\r\n", m.id)
 	fprintf(&nr, &err, w, "Session: %d\r\n", m.sess)
 	fprintf(&nr, &err, w, "From: %v\r\n", m.from)
 	if m.err != nil {
