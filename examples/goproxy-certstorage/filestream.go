@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"log"
 	"os"
 )
 
@@ -23,12 +21,12 @@ func (fs *FileStream) Write(b []byte) (nr int, err error) {
 			return 0, err
 		}
 	}
-	log.Println("Write:", b)
+	// log.Println("Write:", b)
 	return fs.f.Write(b)
 }
 
 func (fs *FileStream) Close() error {
-	fmt.Println("Close", fs.path)
+	// fmt.Println("Close", fs.path)
 	if fs.f == nil {
 		return errors.New("FileStream was never written into")
 	}

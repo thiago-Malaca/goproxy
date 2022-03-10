@@ -13,10 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// HttpLogger is an asynchronous HTTP request/response logger. It traces
-// requests and responses headers in a "log" file in logger directory and dumps
-// their bodies in files prefixed with the session identifiers.
-// Close it to ensure pending items are correctly logged.
 type HttpLogger struct {
 	id    string
 	path  string
@@ -47,21 +43,9 @@ func NewLogger(rawbasepath string) (*HttpLogger, error) {
 	return logger, nil
 }
 
-// func GetMD5Hash(text string) string {
-// 	hasher := md5.New()
-// 	hasher.Write([]byte(text))
-// 	return hex.EncodeToString(hasher.Sum(nil))
-// }
-
 func (logger *HttpLogger) LogResp(resp *http.Response, ctx *goproxy.ProxyCtx) {
-	// s := spew.Sdump(ctx.Req.Context())
-	// // spew.Dump(ctx.Req)
-	// fmt.Printf("GetMD5Hash-Resp: %s\n", GetMD5Hash(s))
-
-	// fmt.Printf("id-Resp:%s", logger.id)
 
 	folder := path.Join(logger.path, fmt.Sprintf("%d", ctx.Session))
-	// fmt.Printf("folder:%s", folder)
 	if err := os.MkdirAll(folder, 0755); err != nil {
 		log.Fatal("Can't create dir", err)
 	}
@@ -88,15 +72,8 @@ var emptyResp = &http.Response{}
 var emptyReq = &http.Request{}
 
 func (logger *HttpLogger) LogReq(req *http.Request, ctx *goproxy.ProxyCtx) {
-	// s := spew.Sdump(ctx.Req)
-	// // spew.Dump(ctx.Req)
-	// fmt.Printf("GetMD5Hash-Req: %s\n", GetMD5Hash(s))
-	// fmt.Printf("Context: %s\n", s)
-
-	// // fmt.Printf("id-Req:%s", logger.id)
 
 	folder := path.Join(logger.path, fmt.Sprintf("%d", ctx.Session))
-	fmt.Printf("folder:%s", folder)
 	if err := os.MkdirAll(folder, 0755); err != nil {
 		log.Fatal("Can't create dir", err)
 	}

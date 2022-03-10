@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"time"
 )
 
@@ -57,6 +58,10 @@ func (m *Meta) WriteTo(w io.Writer) (nr int64, err error) {
 			return nr, err2
 		}
 		write(&nr, &err, w, buf)
+
+		linhas := strings.Split(string(buf), "\r\n")
+		resumo := strings.Join(linhas[:2], "\r\n")
+		fmt.Println(resumo, "\r\n...........................................")
 	} else if m.resp != nil {
 		fprintf(&nr, &err, w, "\r\n")
 		buf, err2 := httputil.DumpResponse(m.resp, false)
