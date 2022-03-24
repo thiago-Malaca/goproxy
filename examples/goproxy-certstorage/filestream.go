@@ -2,18 +2,21 @@ package main
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"github.com/elazarl/goproxy"
 )
 
-type FileStream struct {
+type CtxProposta struct {
 	tipo    string
-	path    string
 	reqURI  string
 	session int64
-	f       *os.File
+}
+
+type FileStream struct {
+	path        string
+	ctxProposta *CtxProposta
+	f           *os.File
 }
 
 func NewFileStream(tipo string, path string, ctx *goproxy.ProxyCtx) *FileStream {
@@ -22,8 +25,9 @@ func NewFileStream(tipo string, path string, ctx *goproxy.ProxyCtx) *FileStream 
 	if reqURI == "" {
 		reqURI = ctx.Req.URL.RequestURI()
 	}
+	ctxProposta := &CtxProposta{tipo, reqURI, ctx.Session}
 
-	return &FileStream{tipo, path, reqURI, ctx.Session, nil}
+	return &FileStream{path, ctxProposta, nil}
 }
 
 func (fs *FileStream) Write(b []byte) (nr int, err error) {
@@ -33,7 +37,8 @@ func (fs *FileStream) Write(b []byte) (nr int, err error) {
 			return 0, err
 		}
 	}
-	log.Println("Write:", string(b))
+	SendData(fs.ctxProposta, string(b))
+
 	return fs.f.Write(b)
 }
 
