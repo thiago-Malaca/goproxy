@@ -57,7 +57,7 @@ func (logger *HttpLogger) LogResp(resp *http.Response, ctx *goproxy.ProxyCtx) {
 	if resp == nil {
 		resp = emptyResp
 	} else {
-		resp.Body = NewTeeReadCloser(resp.Body, NewFileStream(file))
+		resp.Body = NewTeeReadCloser(resp.Body, NewFileStream("response", file, ctx))
 	}
 	logger.LogMeta(&Meta{
 		resp: resp,
@@ -81,7 +81,7 @@ func (logger *HttpLogger) LogReq(req *http.Request, ctx *goproxy.ProxyCtx) {
 	if req == nil {
 		req = emptyReq
 	} else if req.ContentLength != 0 {
-		req.Body = NewTeeReadCloser(req.Body, NewFileStream(file))
+		req.Body = NewTeeReadCloser(req.Body, NewFileStream("request", file, ctx))
 	}
 	logger.LogMeta(&Meta{
 		req:  req,
