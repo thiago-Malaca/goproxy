@@ -3,13 +3,16 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
 	"github.com/elazarl/goproxy"
 	"github.com/elazarl/goproxy/transport"
+	"github.com/joho/godotenv"
 )
 
 func And(pcond ...goproxy.ReqCondition) goproxy.ReqConditionFunc {
@@ -96,4 +99,20 @@ func main() {
 	})
 
 	log.Fatal(http.ListenAndServe(*addr, proxy))
+}
+
+func getEnv(key string) string {
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	value := os.Getenv(key)
+
+	if value == "" {
+		panic(fmt.Sprintf("É necessário informar a variável de ambiente: %s", key))
+	}
+
+	return value
 }

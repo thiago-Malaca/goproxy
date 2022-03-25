@@ -1,21 +1,14 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
-	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
-	"golang.org/x/oauth2/clientcredentials"
 )
 
 type proposta struct {
@@ -49,16 +42,6 @@ func SendData(ctxProposta *CtxProposta, bodyRequest string) {
 			sendDataService(lista[ctxProposta.session])
 		}
 	}
-}
-
-func getEnv(key string) string {
-	value := os.Getenv(key)
-
-	if value != "" {
-		panic(fmt.Sprintf("É necessário informar a variável de ambiente: %s", key))
-	}
-
-	return value
 }
 
 func sendDataService(p *proposta) {
@@ -132,39 +115,8 @@ func sendDataService(p *proposta) {
 			},
 		},
 	}
-	payload, err := json.Marshal(jsonData)
-	if err != nil {
-		fmt.Printf("Erro ao ler o request: %s\n", err)
-	}
 
-	err = godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-
-	oauthConfig := &clientcredentials.Config{
-		ClientID:     getEnv("CLIENT_ID"),
-		ClientSecret: getEnv("CLIENT_SECRET"),
-		TokenURL:     fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/token", getEnv("TENANT_ID")),
-		Scopes: []string{
-			fmt.Sprintf("api://%s/.default", getEnv("SCOPE_CLIENT_ID_BACK")),
-		},
-	}
-
-	client := oauthConfig.Client(context.Background())
-	req, err := http.NewRequest("POST", getEnv("GRAPHQL_URL"), bytes.NewBuffer(payload))
-	if err != nil {
-		fmt.Printf("NewRequest failed with error %s\n", err)
-	}
-	req.Header.Add("x-functions-key", getEnv("GRAPHQL_CODE"))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-	}
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := requestGraphql(jsonData)
 	if err != nil {
 		fmt.Printf("Erro ao ler o body %s\n", err)
 	}
