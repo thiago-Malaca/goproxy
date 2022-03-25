@@ -68,7 +68,9 @@ func main() {
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.css`))),
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.gif`))),
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.png`))),
+		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.jpg`))),
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.svg`))),
+		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.woff`))),
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`.woff2`))),
 		goproxy.Not(goproxy.UrlMatches(regexp.MustCompile(`/rb_`))),
 	}

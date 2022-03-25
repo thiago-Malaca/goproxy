@@ -37,7 +37,7 @@ func (fs *FileStream) Write(b []byte) (nr int, err error) {
 			return 0, err
 		}
 	}
-	SendData(fs.ctxProposta, string(b))
+	SendData(fs.ctxProposta, b)
 
 	return fs.f.Write(b)
 }

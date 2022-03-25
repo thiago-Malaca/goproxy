@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -19,15 +18,19 @@ type proposta struct {
 
 var lista = make(map[int64]*proposta)
 
-func SendData(ctxProposta *CtxProposta, bodyRequest string) {
+func SendData(ctxProposta *CtxProposta, b []byte) {
+	if len(b) == 0 {
+		return
+	}
 
 	if lista[ctxProposta.session] == nil {
 		lista[ctxProposta.session] = &proposta{}
 	}
 
 	var objmap map[string]interface{}
-	if err := json.Unmarshal([]byte(bodyRequest), &objmap); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal(b, &objmap); err != nil {
+		Error.Printf("Não conseguiu converter para json! Path: %s: %v\n", ctxProposta.reqURI, err)
+		return
 	}
 
 	if ctxProposta.tipo == "request" {
