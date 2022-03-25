@@ -2,17 +2,20 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 type proposta struct {
@@ -48,6 +51,16 @@ func SendData(ctxProposta *CtxProposta, bodyRequest string) {
 	}
 }
 
+func getEnv(key string) string {
+	value := os.Getenv(key)
+
+	if value != "" {
+		panic(fmt.Sprintf("É necessário informar a variável de ambiente: %s", key))
+	}
+
+	return value
+}
+
 func sendDataService(p *proposta) {
 
 	var err error
@@ -79,9 +92,6 @@ func sendDataService(p *proposta) {
 		fmt.Printf("Erro ao converter string em uuid: %s\n", err)
 	}
 	id := uuid.NewSHA1(namespace, []byte(fmt.Sprint(p.response["idConsultaPrevia"])))
-
-	url := "http://localhost:7071/api/graphql/"
-	method := "POST"
 
 	jsonData := map[string]interface{}{
 		"query": `
@@ -127,10 +137,26 @@ func sendDataService(p *proposta) {
 		fmt.Printf("Erro ao ler o request: %s\n", err)
 	}
 
-	client := &http.Client{Timeout: time.Second * 10}
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
-	req.Header.Add("x-functions-key", "7LBPOKyfOpFZtPFawzkDPr1bzaQWnFax8C4D/ZzfMKyzXwMs7F1AlQ==")
-	req.Header.Add("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6ImpTMVhvMU9XRGpfNTJ2YndHTmd2UU8yVnpNYyIsImtpZCI6ImpTMVhvMU9XRGpfNTJ2YndHTmd2UU8yVnpNYyJ9.eyJhdWQiOiJhcGk6Ly9jZmJiYmRiMS1kYzY1LTQxY2QtOWI2Ny0zMDQ5YzhiNTYwNmUiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC83N2Y5MWY5Ny1lZWFjLTRlYzAtYmZmNS1hMzM4MjJiMGEwMjkvIiwiaWF0IjoxNjQ4MTE0NzY1LCJuYmYiOjE2NDgxMTQ3NjUsImV4cCI6MTY0ODExODY2NSwiYWlvIjoiRTJaZ1lGaHk4dXZTVW0ySjBQV2hDMk5mZkU3UkFRQT0iLCJhcHBpZCI6IjMxN2FiZTVmLTdmOGMtNDhkZi04YmRmLTBmN2M4M2FkNGMxZiIsImFwcGlkYWNyIjoiMSIsImlkcCI6Imh0dHBzOi8vc3RzLndpbmRvd3MubmV0Lzc3ZjkxZjk3LWVlYWMtNGVjMC1iZmY1LWEzMzgyMmIwYTAyOS8iLCJvaWQiOiIxNmNlOWQ1My0zM2JmLTQ0MmMtOGNkNy1hMTI4NWU0YjVhM2UiLCJyaCI6IjAuQVhVQWx4XzVkNnp1d0U2XzlhTTRJckNnS2JHOXU4OWwzTTFCbTJjd1NjaTFZRzUxQUFBLiIsInJvbGVzIjpbIk1TRl9MZWl0dXJhIiwiTURNX0xlaXR1cmEiXSwic3ViIjoiMTZjZTlkNTMtMzNiZi00NDJjLThjZDctYTEyODVlNGI1YTNlIiwidGlkIjoiNzdmOTFmOTctZWVhYy00ZWMwLWJmZjUtYTMzODIyYjBhMDI5IiwidXRpIjoiVWZjWFBZZUZ6RS1DVktOWWlINXJBUSIsInZlciI6IjEuMCJ9.imcRzKjboK0don_Dqbz8mHelQsl4u4FYwUHQuH1uJ_hgyOXzWmVlKHpLyYNWJeiqfaoXY6u3IGpKpJWCkScpELPeH3oryS58cnwdet7fvB9-v-WJc1Mi5X3ei4s8d2vyuUH28Pkp7RtQz6Jkwa0McNSxQsRj4ZHjE08L2ri_ikmszmX8jxm_I9w-k6MgPbhHs9m4iQam_oQ6a--xWUUogq35w6l7AROs8XRVjgwvDoTDHZPE8Ua-Hf1Gu7at_CQGroJxI_nKgWp3YI0Q5jwSVMd_aNz_ucPdgPWdi2PGBJygg1kSE3RN3udLw-BDPlA564e92gkONytsWk2p4_QfdQ")
+	err = godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	oauthConfig := &clientcredentials.Config{
+		ClientID:     getEnv("CLIENT_ID"),
+		ClientSecret: getEnv("CLIENT_SECRET"),
+		TokenURL:     fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/token", getEnv("TENANT_ID")),
+		Scopes: []string{
+			fmt.Sprintf("api://%s/.default", getEnv("SCOPE_CLIENT_ID_BACK")),
+		},
+	}
+
+	client := oauthConfig.Client(context.Background())
+	req, err := http.NewRequest("POST", getEnv("GRAPHQL_URL"), bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Printf("NewRequest failed with error %s\n", err)
+	}
+	req.Header.Add("x-functions-key", getEnv("GRAPHQL_CODE"))
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := client.Do(req)
