@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -89,6 +90,7 @@ func sendDataService(p *proposta) {
 					nrPropostaCartaoFisico
 					codigo
 					campanha
+					dataEnvio
 				}
 			}`,
 		"variables": map[string]interface{}{
@@ -115,6 +117,7 @@ func sendDataService(p *proposta) {
 				"limite_parcelado":       p.response["valorLimiteAprovadoParcela"],
 				"cod_status":             p.response["resultadoAnalise"],
 				"status":                 p.response["status"],
+				"dataEnvio":              time.Now().Format(time.RFC3339),
 			},
 		},
 	}
